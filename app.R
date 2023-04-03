@@ -1,43 +1,52 @@
-
-source('global.R')
+source("global.R") # loas all that is in global.R into this other file
 
 ui <- dashboardPage(
-    dashboardHeader(title = "scRNAseq Analysis"),
+    dashboardHeader(title = "16S Demo"),
     dashboardSidebar(
         tags$head(
-        tags$style(HTML(".skin-blue .main-header .sidebar-toggle {display: none;}"))
+            tags$style(HTML(".skin-blue .main-header .sidebar-toggle {display: none;}"))
         ),
-        sidebarMenu(id='tab',
+        sidebarMenu(
+            id = "tab",
             useShinyjs(),
             menuItem("Home Page", tabName = "home", icon = icon("list")),
             menuItem("scRNAseq Analyzer", tabName = "input", icon = icon("edit")),
-            conditionalPanel(condition = "input.tab == 'input'",
+            conditionalPanel(
+                condition = "input.tab == 'input'",
                 div(
-                    fileInput("file", "Upload File", multiple=TRUE, accept=c('.rds')),
+                    fileInput("file", "Upload File", multiple = TRUE, accept = c(".rds")),
                     actionButton("reset", "Reset", icon = icon("undo"), style = "color: #fff; background-color: #dc3545; width: 87.25%"),
                     actionButton("run", "Run", icon = icon("play"), style = "color: #fff; background-color: #28a745; width: 87.25%")
+                )
+            ),
+            menuItem("Overview", tabName = "overview", icon = icon("list")),
+            menuItem("MultiQC", tabName = "qc", icon = icon("list")),
+            menuItem("Taxonomic Profile", tabName = "taxonomic", icon = icon("list")),
+            menuItem("About", tabName = "about", icon = icon("list"))
+        )
+    ),
+    dashboardBody(
+        tabItems(
+            tabItem(
+                tabName = "input", # tabItem refers to tab in sidebar (not main panel)
+                tabsetPanel(
+                    id = "main_tabs",
+                    tabPanel(
+                        "Instructions",
+                        includeMarkdown("./markdown/instructions.md")
                     )
                 )
+            ),
+            tabItem(
+                tabName = "home",
+                tags$h1(HTML("<u>Welcome to 16S analysis DEMO with RShiny app</u>")),
+            )
         )
-    ), 
-    dashboardBody(
-            tabItems(
-                tabItem(tabName = "input", # tabItem refers to tab in sidebar (not main panel)
-                tabsetPanel(id = 'main_tabs',
-                    tabPanel("Instructions",
-                            includeMarkdown("./markdown/instructions.md")
-                            )
-                        )
-                    ),
-                tabItem(tabName = "home",
-                tags$h1(HTML("<u>Welcome to The scRNAseq Suerat analysis RShiny app</u>")),
-                )
-                )
-            )         
+    )
 )
 
 server <- function(input, output, session) {
-    options(shiny.maxRequestSize=300*1024^2)
+    options(shiny.maxRequestSize = 300 * 1024^2)
 
     values <- reactiveValues()
 
@@ -45,11 +54,11 @@ server <- function(input, output, session) {
     shinyjs::disable("run")
 
     observe({
-    if(is.null(input$file) != TRUE) {
-        shinyjs::enable("run")
-    } else {
-        shinyjs::disable("run")
-    }
+        if (is.null(input$file) != TRUE) {
+            shinyjs::enable("run")
+        } else {
+            shinyjs::disable("run")
+        }
     })
 
     observeEvent(input$run, {
@@ -62,16 +71,16 @@ server <- function(input, output, session) {
         show_modal_spinner(text = "Preparing plots...")
 
         obj <- load_seurat_obj(input$file$datapath)
-        if (is.vector(obj)){
+        if (is.vector(obj)) {
             showModal(modalDialog(
                 title = "Error with file",
-                HTML("<h5>There is an error with the file you uploaded. See below for more details.</h5><br>",
-                    paste(unlist(obj), collapse = "<br><br>"))
+                HTML(
+                    "<h5>There is an error with the file you uploaded. See below for more details.</h5><br>",
+                    paste(unlist(obj), collapse = "<br><br>")
+                )
             ))
             shinyjs::enable("run")
-
         } else {
-            
             output$umap <- renderPlot({
                 if (!is.null(input$metadata_col)) {
                     create_metadata_UMAP(obj, input$metadata_col)
@@ -85,21 +94,21 @@ server <- function(input, output, session) {
             })
 
             output$downloadFeaturePlot <- downloadHandler(
-                filename = function(){
-                    paste0(input$gene, '_feature_plot', '.png')
+                filename = function() {
+                    paste0(input$gene, "_feature_plot", ".png")
                 },
-                content = function(file){
+                content = function(file) {
                     plot <- create_feature_plot(obj, input$gene)
-                    ggsave(filename=file, width = 10, height = 5, type = "cairo")
+                    ggsave(filename = file, width = 10, height = 5, type = "cairo")
                 }
             )
             output$download_umap <- downloadHandler(
-                filename = function(){
-                    paste0(input$metadata_col, '_UMAP', '.png')
+                filename = function() {
+                    paste0(input$metadata_col, "_UMAP", ".png")
                 },
-                content = function(file){
+                content = function(file) {
                     plot <- create_metadata_UMAP(obj, input$metadata_col)
-                    ggsave(filename=file, width = 10, height = 5, type = "cairo")
+                    ggsave(filename = file, width = 10, height = 5, type = "cairo")
                 }
             )
 
@@ -108,18 +117,19 @@ server <- function(input, output, session) {
                 tabPanel(
                     "UMAP",
                     fluidRow(
-                    column(
-                        width = 8,
-                        plotOutput(outputId = 'umap'),
-                        downloadButton("download_umap", "Download UMAP")
-                    ),
-                    column(
-                        width = 4,
-                        selectizeInput("metadata_col", 
-                            "Metadata Column", 
-                            colnames(obj@meta.data)
+                        column(
+                            width = 8,
+                            plotOutput(outputId = "umap"),
+                            downloadButton("download_umap", "Download UMAP")
+                        ),
+                        column(
+                            width = 4,
+                            selectizeInput(
+                                "metadata_col",
+                                "Metadata Column",
+                                colnames(obj@meta.data)
+                            )
                         )
-                    )
                     ),
                     style = "height: 90%; width: 95%; padding-top: 5%;"
                 ),
@@ -130,18 +140,19 @@ server <- function(input, output, session) {
                 tabPanel(
                     "Gene Expression",
                     fluidRow(
-                    column(
-                        width = 8,
-                        plotOutput(outputId = 'featurePlot'),
-                        downloadButton("downloadFeaturePlot", "Download Feature Plot")
-                    ),
-                    column(
-                        width = 4,
-                        selectizeInput("gene", 
-                            "Genes", 
-                            rownames(obj)
+                        column(
+                            width = 8,
+                            plotOutput(outputId = "featurePlot"),
+                            downloadButton("downloadFeaturePlot", "Download Feature Plot")
+                        ),
+                        column(
+                            width = 4,
+                            selectizeInput(
+                                "gene",
+                                "Genes",
+                                rownames(obj)
+                            )
                         )
-                    )
                     ),
                     style = "height: 90%; width: 95%; padding-top: 5%;"
                 )
@@ -149,7 +160,6 @@ server <- function(input, output, session) {
 
             remove_modal_spinner()
             shinyjs::enable("run")
-            
         }
     })
 
@@ -160,7 +170,6 @@ server <- function(input, output, session) {
         removeTab("main_tabs", "Gene Expression")
         shinyjs::disable("run")
     })
-
 }
 
 shinyApp(ui, server)
